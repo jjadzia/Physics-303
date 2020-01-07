@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "917882509114",
+    "firebase_url": "https://physics-labolatory-app.firebaseio.com",
+    "project_id": "physics-labolatory-app",
+    "storage_bucket": "physics-labolatory-app.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:917882509114:android:c80deb1a46100414c72203",
+        "android_client_info": {
+          "package_name": "physics.labolatory.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "917882509114-3ghilc5caeo7r4fq48scq9pqre85eclj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDNN8ZRekIawj7iaubacIGpyhgd17mlHKM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "917882509114-3ghilc5caeo7r4fq48scq9pqre85eclj.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "917882509114-5oesdp09oa0u80emrm8r88bme6b0a9pr.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "physics-labolatory-app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
