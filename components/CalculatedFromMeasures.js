@@ -7,6 +7,7 @@ const supportedUnits = {
     length: ['cm', 'nm', 'mm', 'm'],
     time: ['s', 'min', 'h'],
     none: [''],
+    force: ['N', 'kN'],
 };
 
 export default class MeasurementTable extends Component {
@@ -26,8 +27,10 @@ export default class MeasurementTable extends Component {
 
     componentDidMount(){
 
-        const { dataLocation, measureType } =this.props;
+        const { dataLocation, measureType, setValuesFunction } =this.props;
         let measurements = firebase.database().ref(dataLocation);
+
+        this.getCalculatedArray=this.getCalculatedArray.bind(this);
 
         const mes=[];
         const keys=[];
@@ -36,13 +39,18 @@ export default class MeasurementTable extends Component {
             mes.length = 0;
             keys.length = 0;
             console.log("fetching measures");
-            if(snapshot.val() != null){
-                Object.keys(snapshot.val()).map((key)=>{
+            if (snapshot.val() != null) {
+                Object.keys(snapshot.val()).map((key) => {
                     mes.push(snapshot.val()[key]);
                     keys.push(key)
                 })
             }
-            this.setState({fetched: true, measures: mes, keys: keys });
+            this.setState(
+                {fetched: true, measures: mes, keys: keys},
+                () => {
+                    setValuesFunction(this.getCalculatedArray())
+                }
+            )
         });
         this.setState({unit: supportedUnits[measureType][0], newUnit: supportedUnits[measureType][0]});
 
@@ -61,6 +69,19 @@ export default class MeasurementTable extends Component {
                 value={numberToShow}
             />
         )
+    }
+
+    getCalculatedArray(){
+        const { measures, fetched } = this.state;
+        const { firstMeasure, secondMeasure, calculateFunction, setValuesFunction } = this.props;
+        const calculatedValues = [];
+        if(setValuesFunction) {
+            measures.map((measure) => {
+                calculatedValues.push(calculateFunction(parseFloat(measure[firstMeasure]), parseFloat(measure[secondMeasure])))
+            })
+        }
+        return calculatedValues;
+
     }
 
     renderDelete(key){
@@ -110,7 +131,14 @@ export default class MeasurementTable extends Component {
             }
         }
         if (measureType == "none") return 1;
-        else return -1;
+        if (measureType == "force") {
+            switch (unit){
+                case 'N': return 1.0;
+                case 'kN': return 1e3;
+                default: return -1;
+            }
+        }
+    else return -1;
     }
 
     render() {
@@ -133,6 +161,7 @@ export default class MeasurementTable extends Component {
 
         return (
             <View style={styles.container}>
+                <View style={{height: 120}}>
                 <Text style={[styles.mean, inputStyle]}>{name}</Text>
                 <Text style={[styles.unit, inputStyle, {fontSize: 8, height: 20}]}>{unit ? "Jednostka:" : "Bez jednostki"}</Text>
                 { unit ? <TextInput
@@ -148,6 +177,7 @@ export default class MeasurementTable extends Component {
                         }
                     }}
                 /> : <View style={[styles.unitSpace, inputStyle]}/>}
+                </View>
                 {<View>
                     {measures.map((measure) => {
                         sum+=parseFloat(measure[firstMeasure]);

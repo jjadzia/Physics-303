@@ -6,7 +6,7 @@ import TabBarIcon from '../components/TabBarIcon';
 import LearnScreen from '../screens/LearnScreen';
 import LabScreen from '../screens/LabScreen';
 import InfoScreen from '../screens/InfoScreen';
-import Quiz from '../components/react-native-quiz/App/screens/Quiz';
+import Quiz from '../components/quiz/screens/Quiz';
 import LoginScreen from "../screens/LoginScreen";
 import RegisterScreen from "../screens/RegisterScreen";
 import InsertInfoScreen from "../screens/InsertInfoScreen";
@@ -18,7 +18,7 @@ const config = Platform.select({
 
 const LearnStack = createStackNavigator(
     {
-        Learn: LoginScreen,
+        Learn: LearnScreen,
         Quiz: Quiz,
     },
     {

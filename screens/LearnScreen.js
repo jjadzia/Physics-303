@@ -13,7 +13,7 @@ import {
 
 import { MonoText } from '../components/StyledText';
 import firebase from "firebase";
-import computerQuestions from "../components/react-native-quiz/App/data/computers";
+import computerQuestions from "../components/quiz/data/computers";
 
 export default function LearnScreen(props) {
   console.log(firebase.auth().currentUser);

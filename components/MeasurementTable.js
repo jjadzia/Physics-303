@@ -66,6 +66,9 @@ export default class MeasurementTable extends Component {
             this.setState({fetched: true, measures: mes, keys: keys });
         });
         this.setState({unit: supportedUnits[measureType][0], newUnit: supportedUnits[measureType][0]});
+
+        this.getValuesArray=this.getValuesArray.bind(this);
+
     }
 
     renderNumberBox(number, key){
@@ -89,7 +92,7 @@ export default class MeasurementTable extends Component {
                 keyboardType={'decimal-pad'}
                 onEndEditing={()=>{
                     const numberInDefaultUnit = parseFloat(this.state.tmpNumber) * this.getUnitFactor();
-                    firebase.database().ref(path).set(numberInDefaultUnit).catch((err)=>console.log(err));
+                    if(numberInDefaultUnit) firebase.database().ref(path).set(numberInDefaultUnit).catch((err)=>console.log(err));
                     //firebase.database().ref('/diffraction/user1/measurements/'+this.state.keys[key]+'/i').set(this.state.tmpNumber).catch((err)=>console.log(err));
 
                     this.setState({tmpNumber: null, editedField: null});
@@ -142,11 +145,17 @@ export default class MeasurementTable extends Component {
     }
 
 
-    ble() {
-        let measurements = firebase.database().ref('/diffraction/user1');
-        measurements.once('value').then(snapshot => {
-            return snapshot.val().map((i)=>console.log("hej",i.name));
-        })
+    getValuesArray(){
+        const { measures } = this.state;
+        const { measureName, setValuesFunction } = this.state;
+
+        if(setValuesFunction) {
+            const calculatedValues = [];
+            {measures.map((measure) => {
+                calculatedValues.push(measure[measureName]);
+            })}
+            setValuesFunction(calculatedValues);
+        }
     }
 
     getUnitFactor(){
@@ -202,6 +211,7 @@ export default class MeasurementTable extends Component {
 
         return (
                 <View style={styles.container}>
+                    <View style={{height: 120}}>
                     <Text style={[styles.mean, inputStyle]}>{name}</Text>
                     <Text style={[styles.unit, inputStyle, {fontSize: 8, height: 20}]}>{unit ? "Jednostka:" : "Bez jednostki"}</Text>
                     { unit ? <TextInput
@@ -217,7 +227,7 @@ export default class MeasurementTable extends Component {
                             }
                         }}
                     /> : <View style={[styles.unitSpace, inputStyle]}/>}
-
+                    </View>
                     {measures.map((measure) => {
                             sum+=parseFloat(measure[measureName]);
                             return (
