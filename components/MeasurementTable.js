@@ -7,6 +7,7 @@ const supportedUnits = {
     mass: ['kg', 'g', 'mg'],
     length: ['cm', 'nm', 'mm', 'm'],
     time: ['s', 'min', 'h'],
+    time2: ['s^2'],
     none: [''],
 };
 
@@ -31,23 +32,24 @@ export default class MeasurementTable extends Component {
     static propTypes = {
         dataLocation: PropTypes.string.isRequired,
         measureName: PropTypes.string.isRequired,
-        withDelete: PropTypes.boolean,
-        inputStyle: PropTypes.object,
         name: PropTypes.string.isRequired,
-        measureType: PropTypes.oneOf['mass', 'length', 'time', 'none'],
+        measureType: PropTypes.oneOf(['mass', 'length', 'time', 'none']).isRequired,
+        withDelete: PropTypes.bool,
+        inputStyle: PropTypes.object,
+        showStatistics: PropTypes.bool,
+        getStatistics: PropTypes.func,
     };
 
     static defaultProps = {
-        dataLocation: PropTypes.string.isRequired,
-        measureName: PropTypes.string.isRequired,
-        withDelete: PropTypes.boolean,
-        inputStyle: PropTypes.object,
-        name: PropTypes.string,
+        withDelete: false,
+        inputStyle: {},
+        showStatistics: false,
+        getStatistics: ()=>null,
     };
 
     componentDidMount(){
 
-        const { dataLocation, measureType } =this.props;
+        const { dataLocation, measureType, showStatistics } =this.props;
         let measurements = firebase.database().ref(dataLocation);
 
         const mes=[];
@@ -62,12 +64,21 @@ export default class MeasurementTable extends Component {
                     mes.push(snapshot.val()[key]);
                     keys.push(key)
                 })
+                this.setState(
+                    {fetched: true, measures: mes, keys: keys },
+                    ()=>{
+                        if(showStatistics) {
+                            this.getStats();
+                        }
+                        this.getValuesArray();
+                    });
             }
-            this.setState({fetched: true, measures: mes, keys: keys });
+            else this.setState({fetched: true });
         });
         this.setState({unit: supportedUnits[measureType][0], newUnit: supportedUnits[measureType][0]});
 
         this.getValuesArray=this.getValuesArray.bind(this);
+        this.getMeanAndStdev=this.getMeanAndStdev.bind(this);
 
     }
 
@@ -120,14 +131,14 @@ export default class MeasurementTable extends Component {
     }
 
     renderNumberInput(){
-        const { dataLocation, measureName, inputStyle } = this.props;
+        const { dataLocation, measureName, inputStyle, withDelete } = this.props;
 
         const { number, unit } = this.state;
         let newMeasure = Object.assign({}, {});
 
         return (
             <TextInput
-                style={[styles.textInput, inputStyle]}
+                style={[styles.textInput, inputStyle, {alignSelf: withDelete ? 'flex-start' : 'center'}]}
                 onChangeText={text => this.setState({ number: text })}
                 value={this.state.number}
                 placeholder={'0.00'}
@@ -147,15 +158,42 @@ export default class MeasurementTable extends Component {
 
     getValuesArray(){
         const { measures } = this.state;
-        const { measureName, setValuesFunction } = this.state;
+        const { measureName, setValuesFunction } = this.props;
 
-        if(setValuesFunction) {
+        console.log("fakens");
+        if(!!setValuesFunction) {
+
             const calculatedValues = [];
             {measures.map((measure) => {
-                calculatedValues.push(measure[measureName]);
+                if(measure[measureName]) calculatedValues.push(measure[measureName]);
             })}
             setValuesFunction(calculatedValues);
         }
+    }
+
+    getStats(){
+        const { getStatistics, measures } = this.props;
+
+        console.log('robie mes', this.getMeanAndStdev());
+        if(measures.length > 1) getStatistics( this.getMeanAndStdev());
+    }
+
+    getMeanAndStdev(){
+        const { measures} = this.state;
+        const { measureName } =this.props;
+
+        let sum = 0;
+        this.state.fetched && measures.map((measure) => {
+            sum+=parseFloat(measure[measureName]);
+        });
+        const mean = sum/measures.length / this.getUnitFactor();
+        sum=0;
+        this.state.fetched && measures.map((measure) => {
+            sum+=Math.pow((parseFloat(measure[measureName])) / this.getUnitFactor()-mean,2);
+        });
+        const variance = sum/measures.length/(measures.length-1);
+        const stdev = Math.sqrt(variance);
+        return [mean, stdev];
     }
 
     getUnitFactor(){
@@ -187,40 +225,40 @@ export default class MeasurementTable extends Component {
                 default: return -1;
             }
         }
+        if (measureType == "time2") return 1.0;
         if (measureType == "none") return 1;
         else return -1;
     }
 
     render() {
 
+
         const { measures, unit, newUnit } = this.state;
-        const { measureName, withDelete, inputStyle, measureType, name } =this.props;
+        const { measureName, withDelete, inputStyle, measureType, name, showStatistics } =this.props;
+
+        const statistics = this.getMeanAndStdev();
+
+        const mean = statistics[0];
+        const stdev = statistics[1];
+
         let sum = 0;
-        this.state.fetched && measures.map((measure) => {
-            sum+=parseFloat(measure[measureName]);
-        });
-        const mean=sum/measures.length / this.getUnitFactor();
-        sum=0;
-        this.state.fetched && measures.map((measure) => {
-            sum+=Math.pow((parseFloat(measure[measureName])) / this.getUnitFactor()-mean,2);
-        });
-        const variance = sum/measures.length/(measures.length-1);
-        const stdev = Math.sqrt(variance);
 
         if(!this.state.fetched) return (<ActivityIndicator style={{ flex: 1, justifyContent: 'center'}}size={"large"}></ActivityIndicator>)
 
         return (
                 <View style={styles.container}>
-                    <View style={{height: 120}}>
+                    <View style={{height: 100}}>
                     <Text style={[styles.mean, inputStyle]}>{name}</Text>
-                    <Text style={[styles.unit, inputStyle, {fontSize: 8, height: 20}]}>{unit ? "Jednostka:" : "Bez jednostki"}</Text>
+                    <Text style={[styles.unit, inputStyle, {fontSize: 10, height: 15}]}>{unit ? "Jednostka:" : "Bez jednostki"}</Text>
                     { unit ? <TextInput
                         style={[styles.unitInput, inputStyle]}
                         onChangeText={text => this.setState({ newUnit: text })}
                         value={this.state.newUnit}
                         autoCapitalize={'none'}
                         onEndEditing={()=>{
-                            if(supportedUnits[measureType].includes(newUnit)) this.setState({unit: newUnit});
+                            if(supportedUnits[measureType].includes(newUnit)) {
+                                this.setState({unit: newUnit});
+                            }
                             else {
                                 Alert.alert(`Jednostka jest niepoprawna lub nie jest obsługiwana.`,`Podaj jedną z: ${supportedUnits[measureType]}` );
                                 this.setState({newUnit: unit});
@@ -238,11 +276,14 @@ export default class MeasurementTable extends Component {
                             )
                         })}
                         {this.state.fetched && this.renderNumberInput()}
-                        <Text style={[styles.mean, inputStyle]}>Średnia:</Text>
-                        <Text style={[styles.mean, inputStyle]}>{parseFloat(mean.toPrecision(6))}</Text>
 
-                        <Text style={[styles.mean, inputStyle]}>Stdev:</Text>
-                        <Text style={[styles.mean, inputStyle]}>{parseFloat(stdev.toPrecision(2))}</Text>
+                    { showStatistics && <View style={{flexDirection: 'column'}}>
+                            <Text style={[styles.mean, inputStyle]}>Średnia:</Text>
+                            <Text style={[styles.mean, inputStyle]}>{parseFloat(mean.toPrecision(6))}</Text>
+
+                            <Text style={[styles.mean, inputStyle]}>Stdev:</Text>
+                            <Text style={[styles.mean, inputStyle]}>{parseFloat(stdev.toPrecision(2))}</Text>
+                        </View>}
                 </View>
 
         );
@@ -252,7 +293,6 @@ export default class MeasurementTable extends Component {
 
 const styles = StyleSheet.create({
     textInput: {
-        marginHorizontal: 20,
         marginVertical: 3,
         height: 30,
         width: 80,
@@ -268,7 +308,7 @@ const styles = StyleSheet.create({
         flexDirection: 'column',
     },
     mean: {
-        marginHorizontal: 20,
+        marginHorizontal: 5,
         marginVertical: 3,
         textAlign: 'left',
         fontSize: 16,
@@ -282,7 +322,7 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
     },
     unitInput: {
-        marginHorizontal: 20,
+        marginHorizontal: 5,
         marginBottom: 20,
         marginVertical: 3,
         height: 25,
@@ -295,7 +335,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
     unitSpace: {
-        marginHorizontal: 20,
+        marginHorizontal:5,
         marginBottom: 20,
         marginVertical: 3,
         height: 25,
@@ -303,10 +343,10 @@ const styles = StyleSheet.create({
         padding: 5,
     },
     unit: {
-        marginHorizontal: 20,
+        marginHorizontal: 5,
         marginVertical: 3,
         textAlign: 'left',
-        fontSize: 11,
+        fontSize: 12,
         width: 80,
         textAlignVertical: 'bottom',
     },

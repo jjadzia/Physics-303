@@ -4,7 +4,6 @@ import { View } from "react-native";
 
 export default class Chart extends React.PureComponent {
     render() {
-        //const data = [50, 10, 40, 95, -4, -24, 85, 91, 35, 53, -53, 24, 50, -20, -80]
 
         const { data, yAccessor, xAccessor, formatXLabel, formatYLabel } = this.props;
 
@@ -38,7 +37,7 @@ export default class Chart extends React.PureComponent {
                     data={data}
                     contentInset={{ top: 20, bottom: 20 }}
                     svg={{ fontSize: 10, fill: 'black' }}
-                    numberOfTicks={10}
+                    numberOfTicks={5}
                     xAccessor={xAccessor}
                     formatLabel={formatXLabel}
                 />

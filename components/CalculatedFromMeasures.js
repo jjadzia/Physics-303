@@ -1,6 +1,8 @@
 import React, { Component } from 'react';
 import {StyleSheet, TextInput, View, Text, Button, TouchableOpacity, Alert, ActivityIndicator} from 'react-native';
 import firebase from "firebase";
+import {parse} from "react-native-svg";
+import PropTypes from "prop-types";
 
 const supportedUnits = {
     mass: ['kg', 'g', 'mg'],
@@ -8,6 +10,7 @@ const supportedUnits = {
     time: ['s', 'min', 'h'],
     none: [''],
     force: ['N', 'kN'],
+    viscosity: ['Pa*s'],
 };
 
 export default class MeasurementTable extends Component {
@@ -25,12 +28,30 @@ export default class MeasurementTable extends Component {
         };
     };
 
+    static propTypes = {
+        dataLocation: PropTypes.string.isRequired,
+        name: PropTypes.string.isRequired,
+        measureType: PropTypes.oneOf(['mass', 'length', 'time', 'none', 'force', 'viscosity']).isRequired,
+        withDelete: PropTypes.bool,
+        inputStyle: PropTypes.object,
+        showStatistics: PropTypes.bool,
+        getStatistics: PropTypes.func,
+        setValuesFunction: PropTypes.func,
+    };
+
+    static defaultProps = {
+        withDelete: false,
+        inputStyle: {},
+        showStatistics: false,
+        getStatistics: ()=>null,
+        setValuesFunction: ()=>null,
+    };
+
     componentDidMount(){
 
-        const { dataLocation, measureType, setValuesFunction } =this.props;
+        const { dataLocation, measureType, setValuesFunction, showStatistics } =this.props;
         let measurements = firebase.database().ref(dataLocation);
 
-        this.getCalculatedArray=this.getCalculatedArray.bind(this);
 
         const mes=[];
         const keys=[];
@@ -38,7 +59,7 @@ export default class MeasurementTable extends Component {
         if(!this.state.fetched) measurements.on('value', snapshot => {
             mes.length = 0;
             keys.length = 0;
-            console.log("fetching measures");
+             console.log("fetching measures");
             if (snapshot.val() != null) {
                 Object.keys(snapshot.val()).map((key) => {
                     mes.push(snapshot.val()[key]);
@@ -48,19 +69,23 @@ export default class MeasurementTable extends Component {
             this.setState(
                 {fetched: true, measures: mes, keys: keys},
                 () => {
-                    setValuesFunction(this.getCalculatedArray())
+                    setValuesFunction(this.getCalculatedArray());
+                    this.getStats();
                 }
             )
         });
         this.setState({unit: supportedUnits[measureType][0], newUnit: supportedUnits[measureType][0]});
-
+        this.getStats = this.getStats.bind(this);
     }
 
-    renderNumberBox(firstNumber, secondNumber){
+    renderNumberBox(firstNumber, secondNumber, thirdNumber){
 
         const { inputStyle, calculateFunction } = this.props;
 
-        const numberToShow= (calculateFunction(firstNumber, secondNumber)/this.getUnitFactor()).toString();
+        console.log("args",firstNumber, secondNumber, thirdNumber)
+
+        const calculatedNumber = calculateFunction(firstNumber, secondNumber, thirdNumber)/this.getUnitFactor();
+        const numberToShow = isNaN(calculatedNumber) ? ' - ' : calculatedNumber.toPrecision(4).toString();
 
         return (
             <TextInput
@@ -73,11 +98,12 @@ export default class MeasurementTable extends Component {
 
     getCalculatedArray(){
         const { measures, fetched } = this.state;
-        const { firstMeasure, secondMeasure, calculateFunction, setValuesFunction } = this.props;
+        const { firstMeasure, secondMeasure, thirdMeasure, calculateFunction, setValuesFunction } = this.props;
         const calculatedValues = [];
-        if(setValuesFunction) {
+        if(fetched && setValuesFunction ) {
+            const thirdArgument = thirdMeasure || secondMeasure;
             measures.map((measure) => {
-                calculatedValues.push(calculateFunction(parseFloat(measure[firstMeasure]), parseFloat(measure[secondMeasure])))
+                if(measure[firstMeasure] && measure[secondMeasure] && measure[thirdArgument])calculatedValues.push(calculateFunction(parseFloat(measure[firstMeasure]), parseFloat(measure[secondMeasure]), parseFloat(measure[thirdArgument]) ))
             })
         }
         return calculatedValues;
@@ -131,6 +157,7 @@ export default class MeasurementTable extends Component {
             }
         }
         if (measureType == "none") return 1;
+        if (measureType == "viscosity") return 1;
         if (measureType == "force") {
             switch (unit){
                 case 'N': return 1.0;
@@ -141,29 +168,53 @@ export default class MeasurementTable extends Component {
     else return -1;
     }
 
+    getStats(){
+        const { getStatistics } = this.props;
+        const { measures } = this.state;
+
+        const stats = this.getMeanAndStdev();
+        if(measures.length > 1) getStatistics([stats[0]*this.getUnitFactor(), stats[1]*this.getUnitFactor()] );
+    }
+
+    getMeanAndStdev(){
+        const { measures} = this.state;
+        const { firstMeasure, secondMeasure, thirdMeasure, calculateFunction } =this.props;
+        let sum = 0;
+        measures.map((measure) => {
+            sum+=calculateFunction(parseFloat(measure[firstMeasure]), parseFloat(measure[secondMeasure]), parseFloat(measure[thirdMeasure]))/this.getUnitFactor();
+        });
+        const mean=sum/measures.length;
+
+        sum=0;
+        this.state.fetched && measures.map((measure) => {
+            sum+=Math.pow(calculateFunction(parseFloat(measure[firstMeasure]), parseFloat(measure[secondMeasure]), parseFloat(measure[thirdMeasure]))-mean,2);
+        });
+        const variance = measures.length>1 ? sum/measures.length/(measures.length-1) : 0;
+        const stdev = Math.sqrt(variance);
+
+        return [mean, stdev];
+    }
+
     render() {
 
         const { measures, unit, newUnit } = this.state;
-        const { firstMeasure, secondMeasure, withDelete, inputStyle, measureType, name } =this.props;
-        let sum = 0;
-        this.state.fetched && measures.map((measure) => {
-            sum+=parseFloat(measure[firstMeasure]);
-        });
-        const mean=sum/measures.length;
-        sum=0;
-        this.state.fetched && measures.map((measure) => {
-            sum+=Math.pow(parseFloat(measure[firstMeasure])-mean,2);
-        });
-        const variance = sum/measures.length/(measures.length-1);
-        const stdev = Math.sqrt(variance);
+        const { firstMeasure, secondMeasure, thirdMeasure, withDelete, inputStyle, measureType, name, showStatistics, calculateFunction } =this.props;
+        const statistics = this.getMeanAndStdev();
+
+        const mean = statistics[0];
+        const stdev = statistics[1];
+
+        let sum =0;
+
+        const shouldShowStatistics = showStatistics && !!mean;
 
         if(!this.state.fetched) return (<ActivityIndicator style={{ flex: 1, justifyContent: 'center'}}size={"large"}></ActivityIndicator>)
 
         return (
             <View style={styles.container}>
-                <View style={{height: 120}}>
+                <View style={{height: 100}}>
                 <Text style={[styles.mean, inputStyle]}>{name}</Text>
-                <Text style={[styles.unit, inputStyle, {fontSize: 8, height: 20}]}>{unit ? "Jednostka:" : "Bez jednostki"}</Text>
+                <Text style={[styles.unit, inputStyle, {fontSize: 10, height: 15}]}>{unit ? "Jednostka:" : "Bez jednostki"}</Text>
                 { unit ? <TextInput
                     style={[styles.unitInput, inputStyle]}
                     onChangeText={text => this.setState({ newUnit: text })}
@@ -182,18 +233,23 @@ export default class MeasurementTable extends Component {
                     {measures.map((measure) => {
                         sum+=parseFloat(measure[firstMeasure]);
                         return (
-                            <View key={measures.indexOf(measure)} style={{flexDirection: 'row', justifyContent: 'center'}}>
-                                {this.renderNumberBox(parseFloat(measure[firstMeasure]), parseFloat(measure[secondMeasure]))}
+                            <View key={measures.indexOf(measure)} style={{flexDirection: 'row'}}>
+                                {this.renderNumberBox(parseFloat(measure[firstMeasure]), parseFloat(measure[secondMeasure]), parseFloat(measure[thirdMeasure]))}
                                 {withDelete ? this.renderDelete(measures.indexOf(measure)) : null}
                             </View>
                         )
                     })}
-                    <Text style={[styles.mean, inputStyle]}>Średnia:</Text>
-                    <Text style={[styles.mean, inputStyle]}>{parseFloat(mean.toPrecision(6))}</Text>
+                    { shouldShowStatistics &&  <View style={{flexDirection: 'column'}}>
+                        <TouchableOpacity onPress={()=>{
+                            Alert.alert("Średnia obliczona zgodnie z estymatorem średniej, niepewność typu A - obliczona korzystając z estymatora odchylenia standardowego średniej", "Więcej informacji znajdziesz w zakładce przygotowanie, w karcie statystyka danych pomiarowych")
+                        }}>
+                        <Text style={[styles.mean, inputStyle]}>Średnia:</Text>
+                        <Text style={[styles.mean, inputStyle]}>{parseFloat(mean.toPrecision(6))}</Text>
 
-                    <Text style={[styles.mean, inputStyle]}>Stdev:</Text>
-                    <Text style={[styles.mean, inputStyle]}>{parseFloat(stdev.toPrecision(2))}</Text>
-
+                        <Text style={[styles.mean, inputStyle]}>Niepewność:</Text>
+                        <Text style={[styles.mean, inputStyle]}>{parseFloat(stdev.toPrecision(2))}</Text>
+                        </TouchableOpacity>
+                    </View>}
                 </View>}
             </View>
 
@@ -203,26 +259,26 @@ export default class MeasurementTable extends Component {
 
 const styles = StyleSheet.create({
     textInput: {
-        marginHorizontal: 20,
         marginVertical: 3,
         height: 30,
         width: 80,
         borderColor: 'black',
         borderWidth: 2,
-        padding: 5,
+        margin: 5,
         textAlign: 'right',
         backgroundColor: 'white',
         borderRadius: 3,
         fontSize: 16,
+        padding: 5,
     },
     container: {
         flexDirection: 'column',
     },
     mean: {
-        marginHorizontal: 20,
+        marginHorizontal: 5,
         marginVertical: 3,
         textAlign: 'left',
-        fontSize: 16,
+        fontSize: 13,
         width: 80,
     },
     removeButton: {
@@ -231,9 +287,10 @@ const styles = StyleSheet.create({
         width: 18,
         height: 18,
         alignSelf: 'center',
+        marginLeft: 15,
     },
     unitInput: {
-        marginHorizontal: 20,
+        marginHorizontal: 5,
         marginBottom: 20,
         marginVertical: 3,
         height: 25,
@@ -257,7 +314,7 @@ const styles = StyleSheet.create({
         marginHorizontal: 20,
         marginVertical: 3,
         textAlign: 'left',
-        fontSize: 11,
+        fontSize: 12,
         width: 80,
         textAlignVertical: 'bottom',
     },

@@ -50,13 +50,14 @@ export default class LoginScreen extends Component {
             indexNo,
             teacher
         } = this.state;
+        const { navigation } = this.props;
 
         if(name && surname && indexNo && teacher) {
-            firebase.database().ref(`${firebase.auth().currentUser.uid}/name`).set(this.state.name).catch((err)=>console.log(err));
-            firebase.database().ref(`${firebase.auth().currentUser.uid}/surname`).set(this.state.surname).catch((err)=>console.log(err));
-            firebase.database().ref(`${firebase.auth().currentUser.uid}/indexNo`).set(this.state.indexNo).catch((err)=>console.log(err));
-            firebase.database().ref(`${firebase.auth().currentUser.uid}/teacher`).set(this.state.teacher).catch((err)=>console.log(err));
-
+            firebase.database().ref(`users/${firebase.auth().currentUser.uid}/name`).set(this.state.name).catch((err)=>console.log(err));
+            firebase.database().ref(`users/${firebase.auth().currentUser.uid}/surname`).set(this.state.surname).catch((err)=>console.log(err));
+            firebase.database().ref(`users/${firebase.auth().currentUser.uid}/indexNo`).set(this.state.indexNo).catch((err)=>console.log(err));
+            firebase.database().ref(`users/${firebase.auth().currentUser.uid}/teacher`).set(this.state.teacher).catch((err)=>console.log(err));
+            navigation.navigate('Main');
         }
         else {
             Alert.alert("Uzupełnij wszytskie dane!")
@@ -108,13 +109,13 @@ export default class LoginScreen extends Component {
             <View style={styles.container}>
                 <Text style={styles.header}>Uzupełnij poniższe dane, aby kontynuuowac</Text>
                 {inputsToRender.map((field)=>this.renderInputField(field))}
-                <View style={{flex: 1, justifyContent: 'flex-end', marginBottom: 20, zIndex: -2}}>
-                <TouchableOpacity
-                    onPress={this.onSubmit}
-                    style={styles.submitButton}
-                >
-                    <Text style={{fontSize: 16}}>POTWIERDŹ</Text>
-                </TouchableOpacity>
+                <View style={{flex: 1, justifyContent: 'flex-end', marginBottom: 20, zIndex: 2}}>
+                    <TouchableOpacity
+                        onPress={this.onSubmit}
+                        style={styles.submitButton}
+                    >
+                        <Text style={{fontSize: 16}}>POTWIERDŹ</Text>
+                    </TouchableOpacity>
                 </View>
             </View>
 
@@ -124,7 +125,7 @@ export default class LoginScreen extends Component {
 
 const styles = StyleSheet.create({
     container: {
-        marginTop: 50,
+        paddingTop: 20,
         paddingHorizontal: 20,
         alignItems: 'center',
         flex: 1,
@@ -147,13 +148,13 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         backgroundColor: 'purple',
         justifyContent: 'center',
+
     },
     picker: {
-        height: 40,
-        width: 300,
+        height: 150,
+        width: 200,
         marginHorizontal: 10,
         paddingHorizontal: 20,
-
     },
     inputField: {
         flexDirection: 'column',

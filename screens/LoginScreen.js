@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import {StyleSheet, TextInput, View, Text, Button, TouchableOpacity, Alert} from 'react-native';
+import {StyleSheet, TextInput, View, Text, Button, TouchableOpacity, Alert, Platform} from 'react-native';
 import firebase from "firebase";
 
 export default class LoginScreen extends Component {
@@ -8,7 +8,7 @@ export default class LoginScreen extends Component {
         this.state = { email: '', password: '' };
 
         this.onSubmitLogin=this.onSubmitLogin.bind(this);
-
+        this.goToRegistration=this.goToRegistration.bind(this);
     }
 
     onSubmitLogin(){
@@ -16,18 +16,20 @@ export default class LoginScreen extends Component {
             firebase.auth().signInWithEmailAndPassword(email, password)
                 .then(()=> {
                     Alert.alert('Zalogowano pomyślnie');
-                    //TO-DO add handling logging in
+                    const { navigation } = this.props;
+                    navigation.navigate('Main');
                 })
                 .catch((err)=> {
-                        Alert.alert('Wystąpił błąd poczas rejestracji. Sprawdź poprawność danych i spróbuj ponownie.');
+                        Alert.alert('Wystąpił błąd poczas logowania. Sprawdź poprawność danych i spróbuj ponownie.');
                         console.log(err);
                     }
                 )
         }
 
     goToRegistration(){
-        //TO-DO add navigating to register
-        return null;
+        const { navigation } = this.props;
+
+        navigation.navigate('Register');
     };
 
     render() {
@@ -56,7 +58,6 @@ export default class LoginScreen extends Component {
                     <Button
                         onPress={this.onSubmitLogin}
                         title="ZALOGUJ"
-                        color="white"
                         accessibilityLabel="Lea"
                     />
                 </View>
@@ -77,6 +78,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         flex: 1,
         justifyContent: 'center',
+        backgroundColor: '#e6e6ff',
     },
     textInput: {
         height: 40,
@@ -91,7 +93,7 @@ const styles = StyleSheet.create({
         height: 40,
         marginTop: 40,
         paddingHorizontal: 20,
-        backgroundColor: '#841584',
+        backgroundColor: Platform.OS === 'ios' ? '#841584' : 'transparent',
         borderRadius: 10,
     },
     header: {

@@ -1,26 +1,47 @@
 import React, { Component } from 'react';
 import {StyleSheet, TextInput, View, Text, Button, TouchableOpacity, Alert, ActivityIndicator} from 'react-native';
 import firebase from "firebase";
+import PropTypes from "prop-types";
 
 const supportedUnits = {
     mass: ['kg', 'g', 'mg'],
     length: ['cm', 'nm', 'mm', 'm'],
     time: ['s', 'min', 'h'],
     none: [''],
+    temperature: ['°C'],
 };
 
 export default class SingleMeasure extends Component {
     constructor(props) {
         super(props);
         this.state = {
-            value: '',
-            scale: '',
+            value: null,
+            scale: null,
             editedField: null,
             fetched: false,
             measure: '',
             unit: '',
             newUnit: '',
         };
+    };
+
+    static propTypes = {
+        dataLocation: PropTypes.string.isRequired,
+        measureType: PropTypes.oneOf(['mass', 'length', 'time', 'none', 'temperature']).isRequired,
+        withDelete: PropTypes.bool,
+        inputStyle: PropTypes.object,
+        showStatistics: PropTypes.bool,
+        getStatistics: PropTypes.func,
+        measureLabel: PropTypes.string,
+    };
+
+    static defaultProps = {
+        withDelete: false,
+        inputStyle: {},
+        showStatistics: false,
+        getStatistics: ()=>null,
+        measureLabel: '',
+
     };
 
     componentDidMount(){
@@ -32,19 +53,33 @@ export default class SingleMeasure extends Component {
 
         if(!this.state.fetched) measurement.on('value', snapshot => {
             mes = snapshot.val();
-            if(mes) this.setState({ measure: mes, value: mes.value, scale: mes.scale });
-            this.setState({ fetched: true });
+            if(mes) this.setState(
+                {
+                    measure: mes,
+                    fetched: true
+                },
+                ()=> this.getStats()
+            );
+            else this.setState({fetched: true });
         });
         this.setState({unit: supportedUnits[measureType][0], newUnit: supportedUnits[measureType][0]});
 
+
     }
 
+    getStats(){
+        const { getStatistics } = this.props;
+        const { measure } =this.state;
+
+        const statsDefined = !!measure.value && !!measure.scale;
+        if(statsDefined) getStatistics( [(parseFloat(measure.value)), (parseFloat(measure.scale))]);
+    }
 
     renderNumber(){
         const { dataLocation, measureLabel } =this.props;
         const { measure, value } =this.state;
 
-        const numberToRender = measure ? (parseFloat(measure.value) / this.getUnitFactor()).toString() : null;
+        const numberToRender = value || (measure.value &&(parseFloat(measure.value) / this.getUnitFactor()).toPrecision(4));
 
         return (
             <View>
@@ -54,12 +89,19 @@ export default class SingleMeasure extends Component {
                     onChangeText={text => {
                         this.setState({value: text});
                     }}
-                    value={numberToRender}
+                    value={ value==='' ? '' : numberToRender}
                     placeholder={'0.00'}
                     autoCapitalize={'none'}
                     keyboardType={'decimal-pad'}
                     onEndEditing={()=>{
-                        firebase.database().ref(dataLocation).update({"value": parseFloat(value) * this.getUnitFactor()}).catch((err)=>console.log(err));
+                        const numberInDefaultUnit = parseFloat(value) * this.getUnitFactor();
+                        if (numberInDefaultUnit) {
+                            console.log("updatuje|", numberInDefaultUnit);
+                            firebase.database().ref(dataLocation)
+                                .update({"value": numberInDefaultUnit})
+                                .catch((err) => console.log(err));
+                        }
+                        this.setState({value: null});
                     }}
                 />
             </View>
@@ -67,10 +109,10 @@ export default class SingleMeasure extends Component {
     }
 
     renderScale(){
-        const { dataLocation, measureName } =this.props;
+        const { dataLocation } =this.props;
         const { measure, scale } =this.state;
 
-        const numberToRender = measure ? (parseFloat(measure.scale) / this.getUnitFactor()).toString() : null;
+        const numberToRender = scale  || (measure.scale && (parseFloat(measure.scale) / this.getUnitFactor()).toPrecision(2));
 
         return (
             <View>
@@ -78,13 +120,18 @@ export default class SingleMeasure extends Component {
                 <TextInput
                     style={styles.textInput}
                     onChangeText={text => this.setState({ scale: text })}
-                    value={numberToRender}
+                    value={ scale === '' ? '' : numberToRender }
                     placeholder={'0.00'}
                     autoCapitalize={'none'}
                     keyboardType={'decimal-pad'}
-                    onEndEditing={()=>{
-                        this.props.onSubmitNumber;
-                        firebase.database().ref(dataLocation).update({"scale": parseFloat(scale) * this.getUnitFactor()}).catch((err)=>console.log(err));
+                    onEndEditing={() => {
+                        const numberInDefaultUnit = parseFloat(scale) * this.getUnitFactor();
+                        if (numberInDefaultUnit) {
+                            firebase.database().ref(dataLocation)
+                                .update({"scale": numberInDefaultUnit})
+                                .catch((err) => console.log(err));
+                        }
+                        this.setState({value: null});
                     }}
                 />
             </View>
@@ -121,6 +168,7 @@ export default class SingleMeasure extends Component {
             }
         }
         if (measureType == "none") return 1;
+        if (measureType == "temperature") return 1;
         else return -1;
     }
 

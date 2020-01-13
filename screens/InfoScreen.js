@@ -1,7 +1,8 @@
 import React, { Component } from 'react';
-import {View, Text, StyleSheet, Button, Alert, ActivityIndicator} from 'react-native';
+import {View, Text, StyleSheet, Button, Alert, ActivityIndicator, TouchableOpacity} from 'react-native';
 import { Linking } from 'react-native'
 import firebase from "firebase";
+import * as MailComposer from 'expo-mail-composer';
 
 const styles = StyleSheet.create({
   container: {
@@ -23,6 +24,7 @@ const styles = StyleSheet.create({
   textboxValue: {
     fontSize: 15,
     paddingVertical: 10,
+      paddingLeft: 20,
     fontWeight: 'bold',
 
   },
@@ -92,11 +94,11 @@ export default class InfoScreen extends Component {
     let surname;
     let indexNo;
 
-    firebase.database().ref(`${firebase.auth().currentUser.uid}`)
+    firebase.database().ref(`users/${firebase.auth().currentUser.uid}`)
         .once('value', snapshot => {
             teacherLabel = snapshot.val().teacher;
             name = snapshot.val().name;
-          surname = snapshot.val().name;
+          surname = snapshot.val().surname;
           indexNo = snapshot.val().indexNo;
         }).then(()=>{
       firebase.database().ref(`teachers`)
@@ -106,6 +108,7 @@ export default class InfoScreen extends Component {
             this.setState({teacherInfo,name, surname, indexNo, fetched: true});
       })
     })
+      this.logout=this.logout.bind(this);
   }
 
 
@@ -114,6 +117,7 @@ export default class InfoScreen extends Component {
 
     return (
         <View style={styles.studentContainer}>
+            <Text style={{fontSize: 20, textAlign: 'center', marginBottom: 20}}>Twoje dane</Text>
           <View style={{flexDirection: 'row', alignItems: 'center'}}>
             <Text style={styles.textboxItem}>Imię i nazwisko: </Text>
             <Text style={styles.textboxValue}>{name} {surname}</Text>
@@ -132,8 +136,10 @@ export default class InfoScreen extends Component {
 
     return (
         <View style={styles.studentContainer}>
-          <View style={{flexDirection: 'row', alignItems: 'center'}}>
-            <Text style={styles.textboxItem}>Prowadzący: </Text>
+            <Text style={{fontSize: 20, textAlign: 'center', marginBottom: 20 }}>Informację o prowadzącym</Text>
+
+            <View style={{flexDirection: 'row', alignItems: 'center'}}>
+            <Text style={styles.textboxItem}>Imię i nazwisko: </Text>
             <Text style={styles.textboxValue}>{teacherInfo.name + ' ' +teacherInfo.surname}</Text>
           </View>
           <View style={{flexDirection: 'row', alignItems: 'center'}}>
@@ -147,24 +153,25 @@ export default class InfoScreen extends Component {
           </View>
           <View style={{flexDirection: 'row', alignItems: 'center'}}>
             <Text style={styles.textboxItem}>Email:</Text>
-            <Button
-                onPress={() =>
-                    //TO-DO add sending mail to teacher
-                    Linking.openURL(`mailto:${teacherInfo.email}?subject=SendMail&body=Description`)
-                }
-                title={teacherInfo.email}
-                style={styles.textboxValue}
-            />
+              <TouchableOpacity
+                  onPress={() =>{Linking.openURL(`mailto:${teacherInfo.email}?subject=SendMail&body=Description`)}}
+                  style={styles.textboxValue}
+              >
+                <Text>
+                    {teacherInfo.email}
+                </Text>
+              </TouchableOpacity>
           </View>
         </View>
     )
   }
 
   logout() {
+      const { navigation } = this.props;
     firebase.auth().signOut()
         .then(() => {
           Alert.alert('Wylogowano')
-          //TO-DO add handling login out
+          navigation.navigate('AuthLoading');
         })
         .catch((err) => {
               Alert.alert('Wystąpił błąd poczas wylogowania. Spróbuj ponownie.');
@@ -179,7 +186,7 @@ export default class InfoScreen extends Component {
         <View style={{alignItems: 'center', marginTop: 40}}>
           <Button
               onPress={() => this.logout()}
-              title={'Wyloguj'}
+              title={"Wyloguj"}
               style={styles.textboxValue}
           />
         </View>

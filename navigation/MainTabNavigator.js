@@ -4,12 +4,13 @@ import { createStackNavigator, createBottomTabNavigator } from 'react-navigation
 
 import TabBarIcon from '../components/TabBarIcon';
 import LearnScreen from '../screens/LearnScreen';
-import LabScreen from '../screens/LabScreen';
+import YoungScreen from '../screens/YoungScreen';
 import InfoScreen from '../screens/InfoScreen';
 import Quiz from '../components/quiz/screens/Quiz';
-import LoginScreen from "../screens/LoginScreen";
-import RegisterScreen from "../screens/RegisterScreen";
-import InsertInfoScreen from "../screens/InsertInfoScreen";
+import FirstLabScreen from "../screens/FirstLabScreen";
+import DiffractionScreen from "../screens/DiffractionScreen";
+import ViscosityScreen from "../screens/ViscosityScreen"
+import PickLabScreen from "../screens/PickLabScreen";
 
 const config = Platform.select({
   web: { headerMode: 'screen' },
@@ -45,9 +46,15 @@ LearnStack.path = '';
 
 const LabStack = createStackNavigator(
   {
-    Lab: LabScreen,
+    Lab: PickLabScreen,
+      FirstLab: FirstLabScreen,
+      Diffraction: DiffractionScreen,
+      Young: YoungScreen,
+      Viscosity: ViscosityScreen,
   },
-  config
+    {
+        initialRouteName: 'Lab',
+    }
 );
 
 LabStack.navigationOptions = {

@@ -1,15 +1,13 @@
 import React, { Component } from 'react';
-import {Button, Linking, Picker, ScrollView, StyleSheet, View} from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
+import {Button, Linking, Picker, ScrollView, StyleSheet, View, Text} from 'react-native';
 import MeasurementTable from '../components/MeasurementTable'
 import SingleMeasure from "../components/SingleMeasure";
 import CalculatedFromMeasures from "../components/CalculatedFromMeasures";
 import Chart from "../components/Chart";
 import * as firebase from "firebase";
-import {XAxis} from "react-native-svg-charts";
 
 
-export default class LabScreen extends Component {
+export default class YoungScreen extends Component {
     constructor(props) {
         super(props);
         this.state = {
@@ -29,37 +27,29 @@ export default class LabScreen extends Component {
     }
 
     render() {
+        console.log(this.state.yToChart);
+
         return (
             <ScrollView style={styles.container}>
+                <Text style={styles.maxHeader} >
+                    Moduł Younga
+                </Text>
+                <Text style={styles.header} >
+                    Pomiar średnicy druta
+                </Text>
                 <SingleMeasure
-                    dataLocation={`/diffraction/${firebase.auth().currentUser.uid}/d`}
-                    measureLabel={'Dł szczeliny'}
+                    dataLocation={`/young/${firebase.auth().currentUser.uid}/d`}
+                    measureLabel={'Średnica'}
                     measureType={"length"}
                 />
-
-                <Button
-                    onPress={() =>
-                        WebBrowser.openBrowserAsync(`https://fis.agh.edu.pl/~pracownia_fizyczna/cwiczenia/11_opis.pdf`)
-                    }
-                    title={'11. Moduł Younga'}
-                    style={styles.textboxValue}
-                />
-                <Button
-                    onPress={() =>
-                        WebBrowser.openBrowserAsync(`https://www.fis.agh.edu.pl/~pracownia_fizyczna/cwiczenia/01_opis.pdf`)
-                    }
-                    title={'a'}
-                    style={styles.textboxValue}
-                />
-                <View style={{flexDirection: 'row'}}>
+                <Text style={styles.header} >
+                    Pomiar wydłużenia od masy
+                </Text>
+                <View style={{flexDirection: 'row', paddingBottom: 20}}>
                     <MeasurementTable
                         dataLocation={`/young/${firebase.auth().currentUser.uid}/measurements`}
                         measureName={'m'}
-                        inputStyle={{
-                            marginHorizontal: 10,
-                            width: 50,
-                            fontSize: 13,
-                        }}
+                        inputStyle={styles.inputStyle}
                         measureType={"mass"}
                         name={"Masa"}
                     />
@@ -71,11 +61,7 @@ export default class LabScreen extends Component {
                             return x * 9.80665
                         }}
                         title={'x'}
-                        inputStyle={{
-                            marginHorizontal: 10,
-                            width: 50,
-                            fontSize: 13,
-                        }}
+                        inputStyle={styles.inputStyle}
                         measureType={"force"}
                         name={"Siła"}
                         setValuesFunction={(xValues)=>{this.setState({xToChart: xValues})}}
@@ -83,24 +69,16 @@ export default class LabScreen extends Component {
                     <MeasurementTable
                         dataLocation={`/young/${firebase.auth().currentUser.uid}/measurements`}
                         measureName={'x1'}
-                        inputStyle={{
-                            marginHorizontal: 10,
-                            width: 50,
-                            fontSize: 13,
-                        }}
+                        inputStyle={styles.inputStyle}
                         measureType={"length"}
-                        name={"Wychylenie ^"}
+                        name={"Wychyl. ^"}
                     />
                     <MeasurementTable
                         dataLocation={`/young/${firebase.auth().currentUser.uid}/measurements`}
                         measureName={'x2'}
-                        inputStyle={{
-                            marginHorizontal: 10,
-                            width: 50,
-                            fontSize: 13,
-                        }}
+                        inputStyle={styles.inputStyle}
                         measureType={"length"}
-                        name={"Wychylenie v"}
+                        name={"Wychyl. v"}
                     />
                     <CalculatedFromMeasures
                         dataLocation={`/young/${firebase.auth().currentUser.uid}/measurements`}
@@ -111,24 +89,22 @@ export default class LabScreen extends Component {
                         }}
                         title={'x'}
                         withDelete
-                        inputStyle={{
-                            marginHorizontal: 10,
-                            width: 50,
-                            fontSize: 13,
-                        }}
+                        inputStyle={styles.inputStyle}
                         measureType={"length"}
-                        name={"Śr wydłużenie"}
+                        name={"Śr. wydł."}
                         setValuesFunction={(yValues)=>{this.setState({yToChart: yValues})}}
                     />
                 </View>
+                <Text style={styles.header} >
+                    Wykres średniego wydłużenia od siły
+                </Text>
                 <Chart
                     data={this.getArrayForChart()}
                     xAccessor={(item)=>{return item.item[0];}
                     }
                     yAccessor={(item)=>{return item.item[1]}}
-                    formatXLabel={(value) => `${value}N`}
-                    formatYLabel={(value) => `${(value*1000)}mm`}
-
+                    formatXLabel={(value) => `${(value).toPrecision(3)}N`}
+                    formatYLabel={(value) => `${(value*1000).toPrecision(3)}mm`}
                 />
                 <View style={{height: 50}}/>
             </ScrollView>
@@ -136,7 +112,7 @@ export default class LabScreen extends Component {
     }
 }
 
-LabScreen.navigationOptions = {
+YoungScreen.navigationOptions = {
   title: 'Twoje ćwiczenia',
 };
 
@@ -145,6 +121,28 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: 15,
     backgroundColor: '#e6e6ff',
-      paddingHorizontal: 20,
+    paddingHorizontal: 20,
   },
+    header: {
+      fontSize: 18,
+        flex: 1,
+        textAlign: 'center',
+        paddingBottom: 20,
+        paddingTop: 30,
+        fontWeight: 'bold',
+    },
+    maxHeader: {
+        fontSize: 22,
+        flex: 1,
+        textAlign: 'center',
+        paddingBottom: 10,
+        paddingTop: 15,
+        fontWeight: 'bold',
+    },
+    inputStyle: {
+        marginHorizontal: 10,
+        width: 50,
+        fontSize: 13,
+        paddingVertical: 2,
+    }
 });
